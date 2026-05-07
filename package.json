@@ -1,0 +1,14 @@
+{
+  "name": "steamfreelicenseremover",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "id": "node findid.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "jsdom": "^29.1.1"
+  }
+}
