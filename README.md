@@ -3,10 +3,20 @@ Inspired and based on [this](https://steamcommunity.com/sharedfiles/filedetails/
 
 Removes free games from your steam library such as those added by [SteamDB](https://steamdb.info/freepackages/)
 
-## How to run
+
+## How to get token (Either One)
+
+### steamRefresh_steam:
+1. Go to Steam's login page
+2. Open Inspect, go to Network, and enable Preserve log
+3. Login to steam
+4. Find finalizelogin and copy the value of steamRefresh_steam under Set-Cookie
+
+### steamLoginSecure: (Will only last 24 hours)
 1. Get the value of steamLoginSecure from Inspect -> Application -> Cookies -> steamLoginSecure and copy the value
-2. Add it to .env file
-3. Run `npm install` & `npm start`
+
+## Run using node
+Run `npm install` & `npm start`
 
 ## Run in Docker
 Run container:

@@ -1,13 +1,19 @@
 import { JSDOM } from "jsdom";
 import { setTimeout as sleep } from "timers/promises";
+import { GetSteamLoginSecure } from "./utils.js";
 import "dotenv/config";
 
-const steamLoginSecureValue = process.env.steamLoginSecure;
-if (!steamLoginSecureValue) {
-  console.error('Error: steamLoginSecure value not found in environment variables.');
+const steamRefreshToken = process.env.steamRefresh_steam ?? null;
+let steamLoginSecureValue = process.env.steamLoginSecure ?? null;
+
+if (steamRefreshToken) {
+  steamLoginSecureValue = await GetSteamLoginSecure(steamRefreshToken);
+} else if (steamLoginSecureValue) {
+  console.warn('Warning: steamRefresh_steam is not set. Using steamLoginSecure directly; this usually expires within 24 hours.');
+} else {
+  console.error('Error: Set steamRefresh_steam or steamLoginSecure in your environment variables.');
   process.exit(1);
 }
-
 
 const response = await fetch("https://store.steampowered.com/account/licenses/", {
   method: "GET",
@@ -26,7 +32,7 @@ if (document.title === "Sign In") {
   process.exit(1);
 }
 
-const sessionID = response.headers.get("set-cookie")?.match(/sessionid=([^;]+)/)?.[1];
+let sessionID = response.headers.get("set-cookie")?.match(/sessionid=([^;]+)/)?.[1];
 if (!sessionID) {
   console.error('Error: sessionid not found in response cookies.');
   process.exit(1);
@@ -47,12 +53,17 @@ console.log(`Removing ${freeLicensePackages.length} free license packages...`);
 const baseDelay = 500;
 const removeLicensesUrl = 'https://store.steampowered.com/account/removelicense';
 
-function exitIfSignInPage(html) {
-  const parsedDocument = new JSDOM(html).window.document;
-  if (parsedDocument.title === 'Sign In') {
-    console.error('Error: Steam returned the Sign In page. Please check your steamLoginSecure value.');
+async function renewSession() {
+  if (!steamRefreshToken) {
+    console.error('Error: steamLoginSecure expired and cannot be renewed because steamRefresh_steam is not set.');
     process.exit(1);
   }
+  steamLoginSecureValue = await GetSteamLoginSecure(steamRefreshToken);
+  console.log('Session expired. Refreshed steamLoginSecure value.');
+}
+
+function isSignInPage(html) {
+  return new JSDOM(html).window.document.title === 'Sign In';
 }
 
 for (let i = 0; i < freeLicensePackages.length; i++) {
@@ -78,7 +89,15 @@ for (let i = 0; i < freeLicensePackages.length; i++) {
     try {
       data = JSON.parse(responseText);
     } catch {
-      exitIfSignInPage(responseText);
+      if (isSignInPage(responseText)) {
+        await renewSession();
+        const renewResponse = await fetch("https://store.steampowered.com/account/licenses/", {
+          method: "GET",
+          headers: { Cookie: `steamLoginSecure=${steamLoginSecureValue}` },
+        });
+        sessionID = renewResponse.headers.get("set-cookie")?.match(/sessionid=([^;]+)/)?.[1] ?? sessionID;
+        continue;
+      }
       throw new Error(`Unexpected non-JSON response while removing package ${freeLicensePackages[i]}.`);
     }
 

@@ -1,12 +1,17 @@
 import { JSDOM } from "jsdom";
-import "dotenv/config";
 import readline from "readline/promises";
+import { GetSteamLoginSecure } from "./utils.js";
+import "dotenv/config";
 
-const steamLoginSecureValue = process.env.steamLoginSecure;
-if (!steamLoginSecureValue) {
-  console.error(
-    "Error: steamLoginSecure value not found in environment variables.",
-  );
+const steamRefreshToken = process.env.steamRefresh_steam ?? null;
+let steamLoginSecureValue = process.env.steamLoginSecure ?? null;
+
+if (steamRefreshToken) {
+  steamLoginSecureValue = await GetSteamLoginSecure(steamRefreshToken);
+} else if (steamLoginSecureValue) {
+  console.warn("Warning: steamRefresh_steam is not set. Using steamLoginSecure directly; this usually expires within 24 hours.");
+} else {
+  console.error("Error: Set steamRefresh_steam or steamLoginSecure in your environment variables.");
   process.exit(1);
 }
 
