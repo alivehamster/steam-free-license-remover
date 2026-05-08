@@ -47,6 +47,14 @@ console.log(`Removing ${freeLicensePackages.length} free license packages...`);
 const baseDelay = 500;
 const removeLicensesUrl = 'https://store.steampowered.com/account/removelicense';
 
+function exitIfSignInPage(html) {
+  const parsedDocument = new JSDOM(html).window.document;
+  if (parsedDocument.title === 'Sign In') {
+    console.error('Error: Steam returned the Sign In page. Please check your steamLoginSecure value.');
+    process.exit(1);
+  }
+}
+
 for (let i = 0; i < freeLicensePackages.length; i++) {
   let retryDelay = baseDelay;
   while (true) {
@@ -64,7 +72,15 @@ for (let i = 0; i < freeLicensePackages.length; i++) {
       body: params.toString(),
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
+    let data;
+
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      exitIfSignInPage(responseText);
+      throw new Error(`Unexpected non-JSON response while removing package ${freeLicensePackages[i]}.`);
+    }
 
     if (data.success === 1) {
       console.log(`Package ${freeLicensePackages[i]} removed successfully. ${i + 1}/${freeLicensePackages.length}`);
