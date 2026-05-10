@@ -1,6 +1,6 @@
 import { JSDOM } from "jsdom";
 import readline from "readline/promises";
-import { GetSteamLoginSecure } from "./utils.js";
+import { GetSteamLoginSecure, fetchWithRetry } from "./utils.js";
 import "dotenv/config";
 
 const steamRefreshToken = process.env.steamRefresh_steam ?? null;
@@ -15,7 +15,7 @@ if (steamRefreshToken) {
   process.exit(1);
 }
 
-const response = await fetch(
+const response = await fetchWithRetry(
   "https://store.steampowered.com/account/licenses/",
   {
     method: "GET",
@@ -23,6 +23,7 @@ const response = await fetch(
       Cookie: `steamLoginSecure=${steamLoginSecureValue}`,
     },
   },
+  { retryLabel: "Fetch Steam licenses page" },
 );
 
 const steamhtml = await response.text();
