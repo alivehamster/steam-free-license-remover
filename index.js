@@ -104,6 +104,8 @@ async function main() {
     continuationToken = getContinuationToken(document);
   }
 
+  freeLicensePackages = freeLicensePackages.slice(process.env.SKIP ?? 0);
+
   console.log(
     `Removing ${freeLicensePackages.length} free license packages...`,
   );
