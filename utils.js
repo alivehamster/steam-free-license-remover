@@ -106,3 +106,14 @@ export async function GetSteamLoginSecure(token) {
   }
   return steamLoginSecure;
 }
+
+export function getContinuationToken(document) {
+  const el = document.querySelector(".license_paginator_next");
+  const token = el
+    ? new URL(
+        el.getAttribute("href"),
+        "https://store.steampowered.com",
+      ).searchParams.get("continuationToken")
+    : null;
+  return token;
+}
