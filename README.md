@@ -16,7 +16,9 @@ Removes free games from your steam library such as those added by [SteamDB](http
 1. Get the value of steamLoginSecure from Inspect -> Application -> Cookies -> steamLoginSecure and copy the value
 
 ## Run using node
-Run `npm install` & `npm start`
+1. Copy example.env to .env
+2. Add steamRefresh_steam or steamLoginSecure to .env 
+3. Run `npm install` & `npm start`
 
 ## Run in Docker
 Run container:
