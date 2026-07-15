@@ -7,8 +7,8 @@ import {
 } from "./utils.js";
 import "dotenv/config";
 
-function getMapFromPage(document) {
-  const licenseMap = new Map();
+function getLookupFromPage(document) {
+  const licenseLookup = Object.create(null);
   for (const a of document.querySelectorAll("div.free_license_remove_link a")) {
     const matched = a.href.match(/RemoveFreeLicense\(\s*(\d+)/);
     if (!matched) continue;
@@ -20,9 +20,9 @@ function getMapFromPage(document) {
       .map((n) => n.textContent.trim())
       .filter(Boolean)
       .join(" ");
-    licenseMap.set(name, packageid);
+    licenseLookup[name] = packageid;
   }
-  return licenseMap;
+  return licenseLookup;
 }
 
 const steamRefreshToken = process.env.steamRefresh_steam ?? null;
@@ -64,7 +64,7 @@ if (initdocument.title === "Sign In") {
   process.exit(1);
 }
 
-let licenseMap = getMapFromPage(initdocument);
+let licenseLookup = getLookupFromPage(initdocument);
 let continuationToken = getContinuationToken(initdocument);
 
 while (continuationToken) {
@@ -86,9 +86,8 @@ while (continuationToken) {
   const dom = new JSDOM(html);
   const document = dom.window.document;
 
-  for (const [name, packageid] of getMapFromPage(document)) {
-    licenseMap.set(name, packageid);
-  }
+  const pageLicenseLookup = getLookupFromPage(document);
+  Object.assign(licenseLookup, pageLicenseLookup);
 
   continuationToken = getContinuationToken(document);
 }
@@ -110,5 +109,5 @@ while (true) {
     process.exit(0);
   }
 
-  console.log(licenseMap.get(answer) ?? "packageid not found");
+  console.log(licenseLookup[answer] ?? "packageid not found");
 }

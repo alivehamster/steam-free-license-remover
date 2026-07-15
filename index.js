@@ -6,6 +6,30 @@ import {
   getContinuationToken,
 } from "./utils.js";
 import "dotenv/config";
+import { writeFile, readFile } from "fs/promises";
+
+const FILE_PATH = "./config/lookups.json";
+
+async function saveLookup(obj) {
+  try {
+    const jsonString = JSON.stringify(obj, null, 2);
+    await writeFile(FILE_PATH, jsonString, "utf-8");
+  } catch (error) {
+    console.error("Error saving:", error);
+  }
+}
+
+async function loadLookup() {
+  try {
+    const jsonString = await readFile(FILE_PATH, "utf-8");
+    return JSON.parse(jsonString);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return {};
+    }
+    throw error;
+  }
+}
 
 function getIDsFromPage(document, excludeIds) {
   const pageLicenses = Array.from(
@@ -22,6 +46,11 @@ function getIDsFromPage(document, excludeIds) {
 async function main() {
   const steamRefreshToken = process.env.steamRefresh_steam ?? null;
   let steamLoginSecureValue = process.env.steamLoginSecure ?? null;
+  let skipLookup = {};
+
+  if (process.env.SaveSkip === "true") {
+    skipLookup = await loadLookup();
+  }
 
   if (steamRefreshToken) {
     steamLoginSecureValue = await GetSteamLoginSecure(steamRefreshToken);
@@ -104,8 +133,6 @@ async function main() {
     continuationToken = getContinuationToken(document);
   }
 
-  freeLicensePackages = freeLicensePackages.slice(process.env.SKIP ?? 0);
-
   console.log(
     `Removing ${freeLicensePackages.length} free license packages...`,
   );
@@ -132,6 +159,13 @@ async function main() {
   for (let i = 0; i < freeLicensePackages.length; i++) {
     let retryDelay = baseDelay;
     while (true) {
+      if (skipLookup[freeLicensePackages[i]]) {
+        console.log(
+          `Skipping package ${freeLicensePackages[i]} as it previously failed to be removed. ${i + 1}/${freeLicensePackages.length}`,
+        );
+        break;
+      }
+
       const params = new URLSearchParams({
         packageid: freeLicensePackages[i],
         sessionid: sessionID,
@@ -187,11 +221,25 @@ async function main() {
         );
         await sleep(baseDelay);
         break;
+      } else if (data.success === 29) {
+        console.log(
+          `Package ${freeLicensePackages[i]} failed to be removed. ${i + 1}/${freeLicensePackages.length}`,
+        );
+        skipLookup[freeLicensePackages[i]] = true;
+        await saveLookup(skipLookup);
+        await sleep(baseDelay);
+        break;
       } else {
         retryDelay = retryDelay * 2;
-        console.warn(
-          `Error Code ${data.success}. Retrying package ${freeLicensePackages[i]} in ${retryDelay}ms`,
-        );
+        if (data.success === 84) {
+          console.warn(
+            `Error Code ${data.success}. Rate limited while removing package ${freeLicensePackages[i]}. Retrying in ${retryDelay}ms`,
+          );
+        } else {
+          console.warn(
+            `Error Code ${data.success}. Unexpected error while removing package ${freeLicensePackages[i]}. Retrying in ${retryDelay}ms`,
+          );
+        }
         await sleep(retryDelay);
       }
     }

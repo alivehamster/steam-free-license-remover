@@ -35,3 +35,6 @@ Environment variables:
 1. Run `npm run id`
 2. Copy the name of the game exactly from [here](https://store.steampowered.com/account/licenses/) into the terminal
 3. add the id it returns to the .env for example `ExcludeID=436163,564091`
+
+## If error code 29 appears
+By default this script will skip the entry and move onto the next but if the script is ever shut down it will go through them again wasting time. To enable it to save which licenses return code 29 set `SaveSkip` in .env to `true`. Additionally if running in docker add `-v ./config:/app/config` to the run command
